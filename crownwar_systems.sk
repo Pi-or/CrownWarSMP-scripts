@@ -1,0 +1,508 @@
+# ========================================================================
+#                    CROWNWARSMP - master COMPLETION SYSTEM
+# ========================================================================
+
+# Combat balance: block End Crystal placement and Respawn Anchor placement/use.
+on place of end crystal:
+    cancel event
+    send "&c&l[!] &cEnd Crystals are forbidden on CrownWarSMP in every dimension!" to player
+
+on right click with end crystal:
+    cancel event
+    send "&c&l[!] &cEnd Crystals are forbidden on CrownWarSMP in every dimension!" to player
+
+# A crystal already present in the world must not damage entities either.
+on damage of ender crystal:
+    cancel event
+
+on explode:
+    if event-entity is ender crystal:
+        cancel event
+
+on place of respawn anchor:
+    cancel event
+    send "&c&l[!] &cRespawn Anchors are forbidden on CrownWarSMP!" to player
+
+on right click on respawn anchor:
+    cancel event
+    send "&c&l[!] &cRespawn Anchors are forbidden on CrownWarSMP!" to player
+
+command /worldgate <text> <text>:
+    permission: op
+    permission message: &cOnly server Operators can modify the Dimensional Gates!
+    trigger:
+        if arg-1 is "open":
+            if arg-2 is "nether":
+                set {gate::nether} to true
+                broadcast "&4&l[GATE] &eThe Nether Gate has been unsealed by the Gods!"
+            else if arg-2 is "end":
+                if {gate::nether} is not set:
+                    send "&c&l[GATE] &cThe End cannot be opened while the Nether is sealed. Open the Nether gate first." to player
+                    stop
+                set {gate::end} to true
+                broadcast "&5&l[GATE] &eThe End Gate has been unsealed by the Gods!"
+            else:
+                send "&cUsage: /worldgate <open|close> <nether|end>" to player
+        else if arg-1 is "close":
+            if arg-2 is "nether":
+                clear {gate::nether}
+                clear {gate::end}
+                broadcast "&4&l[GATE] &cThe Nether Gate has been sealed!"
+                broadcast "&5&l[GATE] &cThe End Gate has also been sealed because the Nether is closed!"
+            else if arg-2 is "end":
+                clear {gate::end}
+                broadcast "&5&l[GATE] &cThe End Gate has been sealed!"
+            else:
+                send "&cUsage: /worldgate <open|close> <nether|end>" to player
+        else:
+            send "&cUsage: /worldgate <open|close> <nether|end>" to player
+
+# Check the destination world, not the player's current world.
+# The old logic checked the source world, so it only blocked trips OUT of a dimension.
+on player portal:
+    if environment of world of event-location is nether:
+        if {gate::nether} is not set:
+            cancel event
+            send title "&c&lGATE SEALED" with subtitle "&7The Nether is locked for the first 5 days." to player
+    else if environment of world of event-location is the end:
+        if {gate::end} is not set:
+            cancel event
+            send title "&c&lGATE SEALED" with subtitle "&7The End is locked for the first 5 days." to player
+
+# Also catch ender-pearl teleportation through a portal and any other teleport into a sealed dimension.
+on teleport:
+    if event-entity is a player:
+        if world of event-location is not world of event-entity:
+            if environment of world of event-location is nether:
+                if {gate::nether} is not set:
+                    cancel event
+                    send title "&c&lGATE SEALED" with subtitle "&7The Nether is locked for the first 5 days." to event-entity
+            else if environment of world of event-location is the end:
+                if {gate::end} is not set:
+                    cancel event
+                    send title "&c&lGATE SEALED" with subtitle "&7The End is locked for the first 5 days." to event-entity
+
+on right click on villager:
+    set {_name} to name of targeted entity
+    if {_name} contains "BCC":
+        cancel event
+        if {quest::click-lock::%player's uuid%} is set:
+            stop
+        set {quest::click-lock::%player's uuid%} to true
+        wait 2 ticks
+        clear {quest::click-lock::%player's uuid%}
+    else if {_name} contains "Bagmati":
+        cancel event
+        if {quest::click-lock::%player's uuid%} is set:
+            stop
+        set {quest::click-lock::%player's uuid%} to true
+        wait 2 ticks
+        clear {quest::click-lock::%player's uuid%}
+    set {_team} to {team::%player's uuid%}
+    
+    if {_name} contains "BCC":
+        if {_team} is not "BBC":
+            send "&c&l[!] &cThe Quest Giver glare freezes you. You do not belong to Team BCC!" to player
+            stop
+            
+        if {quest::BBC} is not set:
+            set {quest::BBC} to 1
+            
+        if {quest::BBC} is 1:
+            if player's tool is air:
+                send "&6&l[QUEST] &f""Bring me &b1 Diamond Block &fto unlock the path of swiftness...""" to player
+            if type of player's tool is diamond block:
+                if item amount of player's tool > 1:
+                    set player's tool to (item amount of player's tool - 1) of player's tool
+                else:
+                    set player's tool to air
+                set {quest::BBC} to 2
+                set {beacon::locked::BBC::speed} to true
+                broadcast "&e&l[QUEST COMPLETE] &fTeam &lBCC &fcompleted Quest 1! &e&lSPEED 1 &fis active globally forever!"
+                execute console command "execute as @a at @s run playsound minecraft:ui.toast.challenge_complete master @s ~ ~ ~ 1 1"
+            else if player's tool is not air:
+                send "&c&l[!] &cThat's not a Diamond Block in your main hand!" to player
+            stop
+            
+        if {quest::BBC} is 2:
+            if player's tool is air:
+                send "&6&l[QUEST] &f""Bring me &b1 Heart of the Sea &fto harden your defenses...""" to player
+            if type of player's tool is heart of the sea:
+                if item amount of player's tool > 1:
+                    set player's tool to (item amount of player's tool - 1) of player's tool
+                else:
+                    set player's tool to air
+                set {quest::BBC} to 3
+                set {beacon::locked::BBC::resistance} to true
+                broadcast "&e&l[QUEST COMPLETE] &fTeam &lBCC &fcompleted Quest 2! &e&lRESISTANCE 1 &fis active globally forever!"
+                execute console command "execute as @a at @s run playsound minecraft:ui.toast.challenge_complete master @s ~ ~ ~ 1 1"
+            else if player's tool is not air:
+                send "&c&l[!] &cThat's not a Heart of the Sea in your main hand!" to player
+            stop
+            
+        if {quest::BBC} is 3:
+            if player's tool is air:
+                send "&6&l[QUEST] &f""Bring me &b1 Mending Book &fto finish the first tier!""" to player
+            if player's tool is an enchanted book:
+                if stored enchants of player's tool contains mending:
+                    set player's tool to air
+                    set {quest::BBC} to 4
+                    set {beacon::locked::BBC::haste} to true
+                    broadcast "&d&l[👑 FACTION MILESTONE] &eTeam &lBCC &ehas unlocked &a&lThe Foundation &eand moved to &c&lThe Ascension&e!"
+                    execute console command "execute as @a at @s run playsound minecraft:entity.ender_dragon.growl master @s ~ ~ ~ 1 1"
+                else:
+                    send "&c&l[!] &cThat's not a Mending Book in your main hand!" to player
+            else if player's tool is not air:
+                send "&c&l[!] &cThat's not a Mending Book in your main hand!" to player
+            stop
+            
+        if {quest::BBC} is 4:
+            if player's tool is air:
+                send "&6&l[QUEST] &f""Bring me &b1 Netherite Ingot &fto conquer the elemental fires...""" to player
+            if type of player's tool is netherite ingot:
+                if item amount of player's tool > 1:
+                    set player's tool to (item amount of player's tool - 1) of player's tool
+                else:
+                    set player's tool to air
+                set {quest::BBC} to 5
+                set {beacon::locked::BBC::fireresist} to true
+                broadcast "&e&l[QUEST COMPLETE] &fTeam &lBCC &fcompleted Quest 4! &e&lFIRE RESISTANCE &fis active globally forever!"
+                execute console command "execute as @a at @s run playsound minecraft:ui.toast.challenge_complete master @s ~ ~ ~ 1 1"
+            else if player's tool is not air:
+                send "&c&l[!] &cThat's not a Netherite Ingot in your main hand!" to player
+            stop
+            
+        if {quest::BBC} is 5:
+            if player's tool is air:
+                send "&6&l[QUEST] &f""Bring me &b1 Totem of Undying &fto maximize kinetic velocity...""" to player
+            if type of player's tool is totem of undying:
+                if item amount of player's tool > 1:
+                    set player's tool to (item amount of player's tool - 1) of player's tool
+                else:
+                    set player's tool to air
+                set {quest::BBC} to 6
+                set {beacon::locked::BBC::speed2} to true
+                broadcast "&e&l[QUEST COMPLETE] &fTeam &lBCC &fcompleted Quest 5! &e&lSPEED 2 &fis active globally forever!"
+                execute console command "execute as @a at @s run playsound minecraft:ui.toast.challenge_complete master @s ~ ~ ~ 1 1"
+            else if player's tool is not air:
+                send "&c&l[!] &cThat's not a Totem of Undying in your main hand!" to player
+            stop
+            
+        if {quest::BBC} is 6:
+            if player's tool is air:
+                send "&6&l[QUEST] &f""Bring me &b1 Enchanted Golden Apple &fto draw raw power from the void...""" to player
+            if type of player's tool is enchanted golden apple:
+                if item amount of player's tool > 1:
+                    set player's tool to (item amount of player's tool - 1) of player's tool
+                else:
+                    set player's tool to air
+                set {quest::BBC} to 7
+                set {beacon::locked::BBC::strength} to true
+                broadcast "&d&l[👑 FACTION MILESTONE] &eTeam &lBCC &ehas unlocked &5&lThe Ascension &eand moved to &4&lUltimate Pinnacle: The Crown's Holder&e!"
+                execute console command "execute as @a at @s run playsound minecraft:entity.ender_dragon.growl master @s ~ ~ ~ 1 1"
+            else if player's tool is not air:
+                send "&c&l[!] &cThat's not an Enchanted Golden Apple in your main hand!" to player
+            stop
+            
+        if {quest::BBC} is 7:
+            if player's tool is air:
+                send "&6&l[QUEST] &f""Bring me &b1 Elytra &fto sacrifice for immortal blood...""" to player
+            if type of player's tool is elytra:
+                if item amount of player's tool > 1:
+                    set player's tool to (item amount of player's tool - 1) of player's tool
+                else:
+                    set player's tool to air
+                set {quest::BBC} to 8
+                set {beacon::locked::BBC::hearts} to true
+                loop all players:
+                    if {team::%loop-player's uuid%} is "BBC":
+                        set max health of loop-player to 20
+                broadcast "&d&l[👑 FACTION MILESTONE] &eTeam &lBCC &ehas completed &d&lUltimate Pinnacle: The Crown's Holder&e! Permanent +10 Hearts granted!"
+                execute console command "execute as @a at @s run playsound minecraft:ui.toast.challenge_complete master @s ~ ~ ~ 1 1"
+            else if player's tool is not air:
+                send "&c&l[!] &cThat's not an Elytra in your main hand!" to player
+            stop
+            
+        if {quest::BBC} is 8:
+            send "&6&l[QUEST] &a""Your kingdom holds ultimate power over space and time. Destroy Team Bagmati!""" to player
+            stop
+
+    if {_name} contains "Bagmati":
+        if {_team} is not "Bagmati":
+            send "&c&l[!] &cThe Quest Giver glare freezes you. You do not belong to Team Bagmati!" to player
+            stop
+            
+        if {quest::Bagmati} is not set:
+            set {quest::Bagmati} to 1
+            
+        if {quest::Bagmati} is 1:
+            if player's tool is air:
+                send "&6&l[QUEST] &f""Bring me &b1 Diamond Block &fto unlock the path of swiftness...""" to player
+            if type of player's tool is diamond block:
+                if item amount of player's tool > 1:
+                    set player's tool to (item amount of player's tool - 1) of player's tool
+                else:
+                    set player's tool to air
+                set {quest::Bagmati} to 2
+                set {beacon::locked::Bagmati::speed} to true
+                broadcast "&e&l[QUEST COMPLETE] &fTeam &lBagmati &fcompleted Quest 1! &e&lSPEED 1 &fis active globally forever!"
+                execute console command "execute as @a at @s run playsound minecraft:ui.toast.challenge_complete master @s ~ ~ ~ 1 1"
+            else if player's tool is not air:
+                send "&c&l[!] &cThat's not a Diamond Block in your main hand!" to player
+            stop
+            
+        if {quest::Bagmati} is 2:
+            if player's tool is air:
+                send "&6&l[QUEST] &f""Bring me &b1 Heart of the Sea &fto harden your defenses...""" to player
+            if type of player's tool is heart of the sea:
+                if item amount of player's tool > 1:
+                    set player's tool to (item amount of player's tool - 1) of player's tool
+                else:
+                    set player's tool to air
+                set {quest::Bagmati} to 3
+                set {beacon::locked::Bagmati::resistance} to true
+                broadcast "&e&l[QUEST COMPLETE] &fTeam &lBagmati &fcompleted Quest 2! &e&lRESISTANCE 1 &fis active globally forever!"
+                execute console command "execute as @a at @s run playsound minecraft:ui.toast.challenge_complete master @s ~ ~ ~ 1 1"
+            else if player's tool is not air:
+                send "&c&l[!] &cThat's not a Heart of the Sea in your main hand!" to player
+            stop
+            
+        if {quest::Bagmati} is 3:
+            if player's tool is air:
+                send "&6&l[QUEST] &f""Bring me &b1 Mending Book &fto finish the first tier!""" to player
+            if player's tool is an enchanted book:
+                if stored enchants of player's tool contains mending:
+                    set player's tool to air
+                    set {quest::Bagmati} to 4
+                    set {beacon::locked::Bagmati::haste} to true
+                    broadcast "&d&l[👑 FACTION MILESTONE] &eTeam &lBagmati &ehas unlocked &a&lThe Foundation &eand moved to &c&lThe Ascension&e!"
+                    execute console command "execute as @a at @s run playsound minecraft:entity.ender_dragon.growl master @s ~ ~ ~ 1 1"
+                else:
+                    send "&c&l[!] &cThat's not a Mending Book in your main hand!" to player
+            else if player's tool is not air:
+                send "&c&l[!] &cThat's not a Mending Book in your main hand!" to player
+            stop
+            
+        if {quest::Bagmati} is 4:
+            if player's tool is air:
+                send "&6&l[QUEST] &f""Bring me &b1 Netherite Ingot &fto conquer the elemental fires...""" to player
+            if type of player's tool is netherite ingot:
+                if item amount of player's tool > 1:
+                    set player's tool to (item amount of player's tool - 1) of player's tool
+                else:
+                    set player's tool to air
+                set {quest::Bagmati} to 5
+                set {beacon::locked::Bagmati::fireresist} to true
+                broadcast "&e&l[QUEST COMPLETE] &fTeam &lBagmati &fcompleted Quest 4! &e&lFIRE RESISTANCE &fis active globally forever!"
+                execute console command "execute as @a at @s run playsound minecraft:ui.toast.challenge_complete master @s ~ ~ ~ 1 1"
+            else if player's tool is not air:
+                send "&c&l[!] &cThat's not a Netherite Ingot in your main hand!" to player
+            stop
+            
+        if {quest::Bagmati} is 5:
+            if player's tool is air:
+                send "&6&l[QUEST] &f""Bring me &b1 Totem of Undying &fto maximize kinetic velocity...""" to player
+            if type of player's tool is totem of undying:
+                if item amount of player's tool > 1:
+                    set player's tool to (item amount of player's tool - 1) of player's tool
+                else:
+                    set player's tool to air
+                set {quest::Bagmati} to 6
+                set {beacon::locked::Bagmati::speed2} to true
+                broadcast "&e&l[QUEST COMPLETE] &fTeam &lBagmati &fcompleted Quest 5! &e&lSPEED 2 &fis active globally forever!"
+                execute console command "execute as @a at @s run playsound minecraft:ui.toast.challenge_complete master @s ~ ~ ~ 1 1"
+            else if player's tool is not air:
+                send "&c&l[!] &cThat's not a Totem of Undying in your main hand!" to player
+            stop
+            
+        if {quest::Bagmati} is 6:
+            if player's tool is air:
+                send "&6&l[QUEST] &f""Bring me &b1 Enchanted Golden Apple &fto draw raw power from the void...""" to player
+            if type of player's tool is enchanted golden apple:
+                if item amount of player's tool > 1:
+                    set player's tool to (item amount of player's tool - 1) of player's tool
+                else:
+                    set player's tool to air
+                set {quest::Bagmati} to 7
+                set {beacon::locked::Bagmati::strength} to true
+                broadcast "&d&l[👑 FACTION MILESTONE] &eTeam &lBagmati &ehas unlocked &5&lThe Ascension &eand moved to &4&lUltimate Pinnacle: The Crown's Holder&e!"
+                execute console command "execute as @a at @s run playsound minecraft:entity.ender_dragon.growl master @s ~ ~ ~ 1 1"
+            else if player's tool is not air:
+                send "&c&l[!] &cThat's not an Enchanted Golden Apple in your main hand!" to player
+            stop
+            
+        if {quest::Bagmati} is 7:
+            if player's tool is air:
+                send "&6&l[QUEST] &f""Bring me &b1 Elytra &fto sacrifice for immortal blood...""" to player
+            if type of player's tool is elytra:
+                if item amount of player's tool > 1:
+                    set player's tool to (item amount of player's tool - 1) of player's tool
+                else:
+                    set player's tool to air
+                set {quest::Bagmati} to 8
+                set {beacon::locked::Bagmati::hearts} to true
+                loop all players:
+                    if {team::%loop-player's uuid%} is "Bagmati":
+                        set max health of loop-player to 20
+                broadcast "&d&l[👑 FACTION MILESTONE] &eTeam &lBagmati &ehas completed &d&lUltimate Pinnacle: The Crown's Holder&e! Permanent +10 Hearts granted!"
+                execute console command "execute as @a at @s run playsound minecraft:ui.toast.challenge_complete master @s ~ ~ ~ 1 1"
+            else if player's tool is not air:
+                send "&c&l[!] &cThat's not an Elytra in your main hand!" to player
+            stop
+            
+        if {quest::Bagmati} is 8:
+            send "&6&l[QUEST] &a""Your kingdom holds maximum cosmic power. Destroy Team BCC!""" to player
+            stop
+
+on join:
+    set {_t} to {team::%player's uuid%}
+    if {beacon::locked::%{_t}%::hearts} is true:
+        set max health of player to 20
+    else:
+        set max health of player to 10
+
+every 3 seconds:
+    loop all players:
+        set {_t} to {team::%loop-player's uuid%}
+        if {beacon::locked::%{_t}%::strength} is true:
+            execute console command "effect give %loop-player% minecraft:strength 6 0 true"
+        if {beacon::locked::%{_t}%::fireresist} is true:
+            execute console command "effect give %loop-player% minecraft:fire_resistance 6 0 true"
+        if {beacon::locked::%{_t}%::speed2} is true:
+            execute console command "effect give %loop-player% minecraft:speed 6 1 true"
+        else if {beacon::locked::%{_t}%::speed} is true:
+            execute console command "effect give %loop-player% minecraft:speed 6 0 true"
+        if {beacon::locked::%{_t}%::resistance} is true:
+            execute console command "effect give %loop-player% minecraft:resistance 6 0 true"
+        if {beacon::locked::%{_t}%::haste} is true:
+            execute console command "effect give %loop-player% minecraft:haste 6 0 true"
+
+on death of player:
+    set {_v_team} to {team::%victim's uuid%}
+    set {_k_team} to {team::%attacker's uuid%}
+    if {_v_team} is set:
+        if {_k_team} is set:
+            if {_v_team} is not {_k_team}:
+                if {bounty::%victim's uuid%} is true:
+                    clear {bounty::%victim's uuid%}
+                    clear {kills::%victim's uuid%}
+                    broadcast "&e&l[BOUNTY CLAIMED] &f%attacker% killed the legendary %victim% and won an &6&lEnchanted Golden Apple&f!"
+                    drop 1 enchanted golden apple at location of victim
+                    stop
+                add 1 to {kills::%attacker's uuid%}
+                if {kills::%attacker's uuid%} is 3:
+                    set {bounty::%attacker's uuid%} to true
+                    broadcast "&4&l[BOUNTY RUN] &e%attacker% from Team %{_k_team}% is on a 3-Kill Rampage! Kill them to steal a God Apple!"
+
+command /resetbuffs:
+    permission: op
+    trigger:
+        clear {beacon::locked::BBC::speed}
+        clear {beacon::locked::BBC::resistance}
+        clear {beacon::locked::BBC::haste}
+        clear {beacon::locked::BBC::speed2}
+        clear {beacon::locked::BBC::strength}
+        clear {beacon::locked::BBC::fireresist}
+        clear {beacon::locked::BBC::hearts}
+        clear {beacon::locked::Bagmati::speed}
+        clear {beacon::locked::Bagmati::resistance}
+        clear {beacon::locked::Bagmati::haste}
+        clear {beacon::locked::Bagmati::speed2}
+        clear {beacon::locked::Bagmati::strength}
+        clear {beacon::locked::Bagmati::fireresist}
+        clear {beacon::locked::Bagmati::hearts}
+        clear {quest::BBC}
+        clear {quest::Bagmati}
+        loop all players:
+            set max health of loop-player to 10
+        send "&a&l[ADMIN] &aAll permanent kingdom buffs and tier progression data have been completely wiped!" to player
+
+command /resetplayerteam <player>:
+    permission: op
+    trigger:
+        set {_p} to arg-1
+        clear {team::%{_p}'s uuid%}
+        clear {hq::%{_p}'s uuid%}
+        set max health of {_p} to 10
+        set {_p}'s display name to name of {_p}
+        execute console command "team leave %name of {_p}%"
+        send "&a&l[ADMIN] &aSuccessfully wiped team, HQ spawn tags, and prefixes for %{_p}%!" to player
+        send "&c&l[!] &cAn administrator has reset your team data. Use /joinbcc or /joinbagmati to re-align!" to {_p}
+
+command /setbcchq:
+    trigger:
+        if {team::%player's uuid%} is not "BBC":
+            send "&c&l[!] &cYou do not belong to Team BCC! You cannot alter their base grid." to player
+            stop
+        set {_loc} to location of player
+        set {_spawn} to location(0, 73, 0, world of player)
+        if distance between {_loc} and {_spawn} is less than 100:
+            send "&c&l[!] &cThe cosmic altar rejects this location! Bases cannot be built inside the 100x100 Spawn Region." to player
+            stop
+        if {hq::location::Bagmati} is set:
+            if distance between {_loc} and {hq::location::Bagmati} is less than 100:
+                send "&c&l[!] &cToo close to enemy territory! You must build your HQ at least 100 blocks away from Bagmati's base." to player
+                stop
+        set {hq::location::BBC} to {_loc}
+        loop all players:
+            if {team::%loop-player's uuid%} is "BBC":
+                set {hq::%loop-player's uuid%} to {hq::location::BBC}
+                send "&e&l[HQ RELOCATION] &f%player% has re-anchored &eTeam BCC's HQ &fto your current coordinates!" to loop-player
+
+command /setbagmatihq:
+    trigger:
+        if {team::%player's uuid%} is not "Bagmati":
+            send "&c&l[!] &cYou do not belong to Team Bagmati! You cannot alter their base grid." to player
+            stop
+        set {_loc} to location of player
+        set {_spawn} to location(0, 73, 0, world of player)
+        if distance between {_loc} and {_spawn} is less than 100:
+            send "&c&l[!] &cThe cosmic altar rejects this location! Bases cannot be built inside the 100x100 Spawn Region." to player
+            stop
+        if {hq::location::BBC} is set:
+            if distance between {_loc} and {hq::location::BBC} is less than 100:
+                send "&c&l[!] &cToo close to enemy territory! You must build your HQ at least 100 blocks away from BCC's base." to player
+                stop
+        set {hq::location::Bagmati} to {_loc}
+        loop all players:
+            if {team::%loop-player's uuid%} is "Bagmati":
+                set {hq::%loop-player's uuid%} to {hq::location::Bagmati}
+                send "&e&l[HQ RELOCATION] &f%player% has re-anchored &eTeam Bagmati's HQ &fto your current coordinates!" to loop-player
+
+command /setbccmover:
+    trigger:
+        if {team::%player's uuid%} is not "BBC":
+            send "&c&l[!] &cYou do not belong to Team BCC! You cannot relocate their Quest Giver." to player
+            stop
+        set {_loc} to location of player
+        loop all villagers:
+            if name of loop-villager contains "BCC":
+                teleport loop-villager to {_loc}
+                set {quest_giver::loc::BBC} to {_loc}
+                set {_found} to true
+        if {_found} is true:
+            loop all players:
+                if {team::%loop-player's uuid%} is "BBC":
+                    send "&e&l[NPC MOVED] &f%player% has relocated &eBCC's Quest Giver &fto your current position!" to loop-player
+                    play sound "entity.enderman.teleport" with volume 0.8 and pitch 1 to loop-player
+        else:
+            send "&c&l[!] &cQuest Giver entity not found in loaded chunks! Make sure it has been summoned at least once on the server." to player
+
+command /setbagmatimover:
+    trigger:
+        if {team::%player's uuid%} is not "Bagmati":
+            send "&c&l[!] &cYou do not belong to Team Bagmati! You cannot relocate their Quest Giver." to player
+            stop
+        set {_loc} to location of player
+        loop all villagers:
+            if name of loop-villager contains "Bagmati's Quest Giver":
+                teleport loop-villager to {_loc}
+                set {quest_giver::loc::Bagmati} to {_loc}
+                set {_found} to true
+        if {_found} is true:
+            loop all players:
+                if {team::%loop-player's uuid%} is "Bagmati":
+                    send "&e&l[NPC MOVED] &f%player% has relocated &eBagmati's Quest Giver &fto your current position!" to loop-player
+                    play sound "entity.enderman.teleport" with volume 0.8 and pitch 1 to loop-player
+        else:
+            send "&c&l[!] &cQuest Giver entity not found in loaded chunks! Make sure it has been summoned at least once on the server." to player

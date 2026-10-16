@@ -1,0 +1,5 @@
+#For BCC's Quest Giver
+/summon minecraft:villager ~ ~ ~ {NoAI:1b,Invulnerable:1b,CustomName:'"BCC\'s Quest Giver"',CustomNameVisible:1b,PersistenceRequired:1b,Silent:1b,VillagerData:{profession:"minecraft:cleric",level:5,type:"minecraft:plains"},Attributes:[{Name:"generic.knockback_resistance",Base:1.0f}]}
+
+#For Bagmati's Quest Giver
+/summon minecraft:villager ~ ~ ~ {NoAI:1b,Invulnerable:1b,CustomName:'"Bagmati\'s Quest Giver"',CustomNameVisible:1b,PersistenceRequired:1b,Silent:1b,VillagerData:{profession:"minecraft:weaponsmith",level:5,type:"minecraft:taiga"},Attributes:[{Name:"generic.knockback_resistance",Base:1.0f}]}

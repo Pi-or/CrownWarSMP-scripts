@@ -1,0 +1,334 @@
+# ------------------------------------------------------------------------
+# CROWNWARSMP FACTION NAME DISPLAY
+# Vanilla scoreboard teams provide prefixes in overhead nametags and tablist.
+# Chat remains handled by the on chat event below. No addons required.
+# ------------------------------------------------------------------------
+on load:
+    execute console command "team add cws_bbc"
+    execute console command "team add cws_bagmati"
+    execute console command "team modify cws_bbc prefix {""text"":""[BCC] "",""color"":""yellow"",""bold"":true}"
+    execute console command "team modify cws_bbc color yellow"
+    execute console command "team modify cws_bagmati prefix {""text"":""[Bagmati] "",""color"":""aqua"",""bold"":true}"
+    execute console command "team modify cws_bagmati color aqua"
+    loop all players:
+        if {team::%loop-player's uuid%} is "BBC":
+            set loop-player's display name to name of loop-player
+            execute console command "team join cws_bbc %name of loop-player%"
+        else if {team::%loop-player's uuid%} is "Bagmati":
+            set loop-player's display name to name of loop-player
+            execute console command "team join cws_bagmati %name of loop-player%"
+
+on join:
+    wait 1 tick
+    if {team::%player's uuid%} is "BBC":
+        set player's display name to name of player
+        execute console command "team join cws_bbc %name of player%"
+    else if {team::%player's uuid%} is "Bagmati":
+        set player's display name to name of player
+        execute console command "team join cws_bagmati %name of player%"
+    else:
+        send "" to player
+        send "&6&lWELCOME TO CROWNWARSMP" to player
+        send "&7You must choose a faction before moving or playing." to player
+        send "&e/joinbcc &7then &6/confirm bcc &7to join BCC." to player
+        send "&b/joinbagmati &7then &3/confirm bagmati &7to join Bagmati." to player
+        send "&cYour movement is locked until you choose a team." to player
+
+# Unaligned players remain frozen until /confirm assigns a faction.
+on player move:
+    if {team::%player's uuid%} is not set:
+        cancel event
+
+on teleport:
+    if event-entity is a player:
+        if {team::%event-entity's uuid%} is not set:
+            cancel event
+            send "&cChoose a faction first: /joinbcc or /joinbagmati, then confirm it." to event-entity
+
+on right click:
+    if location of clicked block is location(0, 73, 0, world of player):
+        cancel event
+        open workbench to player
+
+command /joinbcc:
+    trigger:
+        if {team::%player's uuid%} is set:
+            send "&c&l[!] &cYour soul is already locked to Team %{team::%player's uuid%}%. You cannot betray your faction!" to player
+            stop
+        send "" to player
+        send "&e&l⚠️ FACTION ALIGNMENT ⚠️" to player
+        send "&7You are about to swear your blade to &eTeam BCC&7." to player
+        send "&7To confirm your choice, type or tap: &6&l/confirm bcc" to player
+        send "" to player
+
+command /joinbagmati:
+    trigger:
+        if {team::%player's uuid%} is set:
+            send "&c&l[!] &cYour soul is already locked to Team %{team::%player's uuid%}%. You cannot betray your faction!" to player
+            stop
+        send "" to player
+        send "&e&l⚠️ FACTION ALIGNMENT ⚠️" to player
+        send "&7You are about to swear your blade to &eTeam Bagmati&7." to player
+        send "&7To confirm your choice, type or tap: &6&l/confirm bagmati" to player
+        send "" to player
+
+command /confirm <text>:
+    trigger:
+        if {team::%player's uuid%} is set:
+            send "&c&l[!] &cYou are already locked to a team!" to player
+            stop
+        if arg-1 is "bcc":
+            set {team::%player's uuid%} to "BBC"
+            set player's display name to name of player
+            execute console command "team join cws_bbc %name of player%"
+            send "&e&l[SUCCESS] &aYou have officially joined &e&lTeam BCC&a!" to player
+            if {hq::location::BBC} is set:
+                set {hq::%player's uuid%} to {hq::location::BBC}
+                teleport player to {hq::location::BBC}
+            else:
+                send "&c&l[HQ] &cTeam BCC's HQ has not been configured yet. A BCC member must stand at the desired base location and use /setbcchq." to player
+            broadcast "&e&l[WAR] &f%player% has officially joined &eTeam BCC&f!"
+            stop
+        else if arg-1 is "bagmati":
+            set {team::%player's uuid%} to "Bagmati"
+            set player's display name to name of player
+            execute console command "team join cws_bagmati %name of player%"
+            send "&e&l[SUCCESS] &aYou have officially joined &e&lTeam Bagmati&a!" to player
+            if {hq::location::Bagmati} is set:
+                set {hq::%player's uuid%} to {hq::location::Bagmati}
+                teleport player to {hq::location::Bagmati}
+            else:
+                send "&c&l[HQ] &cTeam Bagmati's HQ has not been configured yet. A Bagmati member must stand at the desired base location and use /setbagmatihq." to player
+            broadcast "&e&l[WAR] &f%player% has officially joined &eTeam Bagmati&f!"
+            stop
+        else:
+            send "&c&l[!] &cUnknown faction. Use /confirm bcc or /confirm bagmati." to player
+
+on chat:
+    if {team::%player's uuid%} is "BBC":
+        set chat format to "&e[BCC] &r%player%: %message%"
+    else if {team::%player's uuid%} is "Bagmati":
+        set chat format to "&b[Bagmati] &r%player%: %message%"
+
+on respawn:
+    if {team::%player's uuid%} is "BBC":
+        if {hq::location::BBC} is set:
+            set respawn location to {hq::location::BBC}
+    else if {team::%player's uuid%} is "Bagmati":
+        if {hq::location::Bagmati} is set:
+            set respawn location to {hq::location::Bagmati}
+
+command /tphq:
+    trigger:
+        set {_team} to {team::%player's uuid%}
+        if {_team} is not set:
+            send "&c&l[!] &cYou have not chosen a team faction yet! Use /joinbcc or /joinbagmati." to player
+            stop
+        if {tphq::active::%player's uuid%} is true:
+            send "&c&l[!] &cYour HQ warp is already in progress." to player
+            stop
+        if {_team} is "BBC":
+            if {hq::location::BBC} is not set:
+                send "&c&l[HQ] &cTeam BCC's HQ has not been configured. A BCC member must use /setbcchq at the desired location first." to player
+                stop
+        else if {_team} is "Bagmati":
+            if {hq::location::Bagmati} is not set:
+                send "&c&l[HQ] &cTeam Bagmati's HQ has not been configured. A Bagmati member must use /setbagmatihq at the desired location first." to player
+                stop
+        else:
+            send "&c&l[!] &cYour faction is invalid. Contact an administrator." to player
+            stop
+
+        set {_start_loc} to location of player
+        set {tphq::start::%player's uuid%} to {_start_loc}
+        set {tphq::active::%player's uuid%} to true
+        send "&a&l[WARP] &7Commencing tactical evacuation to HQ. Stand still for 5 seconds; any damage or movement cancels it..." to player
+        set {_time} to 5
+        loop 5 times:
+            if {tphq::active::%player's uuid%} is not true:
+                stop
+            if world of player is not world of {_start_loc}:
+                clear {tphq::active::%player's uuid%}
+                clear {tphq::start::%player's uuid%}
+                send "&c&l[CANCELLED] &cYou changed worlds! Tactical warp sequence terminated." to player
+                stop
+            if distance between player and {_start_loc} is greater than 0.5:
+                clear {tphq::active::%player's uuid%}
+                clear {tphq::start::%player's uuid%}
+                send "&c&l[CANCELLED] &cYou moved! Tactical warp sequence terminated." to player
+                stop
+            send action bar "&6&lWarping in: &e%{_time}%s" to player
+            execute console command "execute as %player% at @s run playsound minecraft:block.note_block.hat master @s ~ ~ ~ 0.5 1"
+            wait 1 second
+            subtract 1 from {_time}
+
+        if {tphq::active::%player's uuid%} is not true:
+            stop
+        if world of player is not world of {_start_loc}:
+            clear {tphq::active::%player's uuid%}
+            clear {tphq::start::%player's uuid%}
+            send "&c&l[CANCELLED] &cYou changed worlds! Tactical warp sequence terminated." to player
+            stop
+        if distance between player and {_start_loc} is greater than 0.5:
+            clear {tphq::active::%player's uuid%}
+            clear {tphq::start::%player's uuid%}
+            send "&c&l[CANCELLED] &cYou moved at the final second! Warp terminated." to player
+            stop
+
+        # Read the faction's current HQ at the end of the countdown, not an old player-specific coordinate.
+        set {_team} to {team::%player's uuid%}
+        if {_team} is "BBC":
+            set {_target} to {hq::location::BBC}
+        else if {_team} is "Bagmati":
+            set {_target} to {hq::location::Bagmati}
+        if {_target} is not set:
+            clear {tphq::active::%player's uuid%}
+            clear {tphq::start::%player's uuid%}
+            send "&c&l[HQ] &cYour faction HQ is not configured. Warp cancelled." to player
+            stop
+        clear {tphq::active::%player's uuid%}
+        clear {tphq::start::%player's uuid%}
+        teleport player to {_target}
+        send "&a&l[WARP] &aEvacuation successful! Welcomed back to Headquarters." to player
+        execute console command "playsound minecraft:entity.enderman.teleport master %player% ~ ~ ~ 1 1"
+
+on damage of player:
+    if {tphq::active::%victim's uuid%} is true:
+        clear {tphq::active::%victim's uuid%}
+        clear {tphq::start::%victim's uuid%}
+        send "&c&l[CANCELLED] &cYou took damage! Tactical warp sequence terminated." to victim
+
+on player move:
+    if {tphq::active::%player's uuid%} is true:
+        set {_start_loc} to {tphq::start::%player's uuid%}
+        if {_start_loc} is set:
+            if world of player is not world of {_start_loc}:
+                clear {tphq::active::%player's uuid%}
+                clear {tphq::start::%player's uuid%}
+                send "&c&l[CANCELLED] &cYou changed worlds! Tactical warp sequence terminated." to player
+            else if distance between player and {_start_loc} is greater than 0.5:
+                clear {tphq::active::%player's uuid%}
+                clear {tphq::start::%player's uuid%}
+                send "&c&l[CANCELLED] &cYou moved! Tactical warp sequence terminated." to player
+
+on quit:
+    clear {tphq::active::%player's uuid%}
+    clear {tphq::start::%player's uuid%}
+
+on inventory click:
+    if index of clicked slot is 0:
+        if event-item is barrier block:
+            set {_loc} to location(0, 73.5, 0, world of player)
+            if distance between player and {_loc} is greater than 2.5:
+                cancel event
+                send "&4&l[!] &cThe cosmic forge rejects you. This relic can only be bound at The Center of The World!" to player
+                stop
+            set slot 1 of current inventory to air
+            set slot 2 of current inventory to air
+            set slot 3 of current inventory to air
+            set slot 4 of current inventory to air
+            set slot 5 of current inventory to air
+            set slot 6 of current inventory to air
+            set slot 7 of current inventory to air
+            set slot 8 of current inventory to air
+            set slot 9 of current inventory to air
+            cancel event
+            close player's inventory
+            set {_team} to {team::%player's uuid%}
+            if {_team} is not set:
+                set {_team} to "Unknown Rogue"
+            make console execute command "skript-core-ritual %player% %{_team}%"
+
+command /skript-core-ritual <player> <text>:
+    permission: console.only
+    trigger:
+        set {_p} to arg-1
+        set {_fation} to arg-2
+        if {_fation} is "BBC":
+            set {_crown_team_name} to "BCC's Crown"
+            set {_crown_name_color} to "gold"
+        else if {_fation} is "Bagmati":
+            set {_crown_team_name} to "Bagmati's Crown"
+            set {_crown_name_color} to "aqua"
+        else:
+            set {_crown_team_name} to "Rogue's Crown"
+            set {_crown_name_color} to "light_purple"
+        set {_loc} to location(0, 73.5, 0, world of {_p})
+        if {_fation} is "BBC":
+            broadcast "&e&l[WAR] &eTeam &lBCC &ehas seized &7The Center of The World&e! The Sovereign Crown is forming..."
+        else if {_fation} is "Bagmati":
+            broadcast "&e&l[WAR] &eTeam &lBagmati &ehas seized &7The Center of The World&e! The Sovereign Crown is forming..."
+        else:
+            broadcast "&d&l[WAR] &eA rogue warrior %{_p}% has triggered the ritual at &7The Center of The World&e!"
+        execute console command "execute as @a at @s run playsound minecraft:entity.lightning_bolt.thunder master @s ~ ~ ~ 1 1"
+        execute console command "weather thunder"
+        execute console command "bossbar remove craft_timer"
+        wait 2 ticks
+        execute console command "bossbar add craft_timer {text:""Forging Faction Crown..."",color:""yellow"",bold:true}"
+        execute console command "bossbar set craft_timer color purple"
+        execute console command "bossbar set craft_timer style progress"
+        execute console command "bossbar set craft_timer max 300"
+        execute console command "bossbar set craft_timer value 300"
+        execute console command "bossbar set craft_timer players @a"
+        set {_seconds_left} to 300
+        loop 290 times:
+            wait 1 second
+            subtract 1 from {_seconds_left}
+            execute console command "bossbar set craft_timer name {text:""%{_crown_team_name}%"",color:""%{_crown_name_color}%"",bold:true,extra:[{text:"" Forging: %{_seconds_left}%s left"",color:""gold"",bold:true}]}"
+            execute console command "bossbar set craft_timer value %{_seconds_left}%"
+            execute console command "execute at @a run particle minecraft:enchant 0 74 0 0.5 1 0.5 0.1 25"
+            execute console command "execute at @a run particle minecraft:portal 0 74 0 0.4 1 0.4 0.2 15"
+            execute console command "execute at @a run particle minecraft:spell_witch 0 73 0 0.5 0.5 0.5 0.1 10"
+        loop 8 times:
+            subtract 1 from {_seconds_left}
+            execute console command "bossbar set craft_timer color red"
+            execute console command "bossbar set craft_timer name {text:""%{_crown_team_name}%"",color:""%{_crown_name_color}%"",bold:true,extra:[{text:"" — DESTABILIZING: %{_seconds_left}%s"",color:""red"",bold:true}]}"
+            execute console command "bossbar set craft_timer value %{_seconds_left}%"
+            wait 1 second
+        execute console command "bossbar set craft_timer value 2"
+        execute console command "bossbar set craft_timer color red"
+        execute console command "bossbar set craft_timer style notched_20"
+        execute console command "bossbar set craft_timer name {text:""%{_crown_team_name}%"",color:""%{_crown_name_color}%"",bold:true,extra:[{text:"" — MATRIX ERUPTION IN: 2s"",color:""red"",bold:true}]}"
+        execute console command "execute as @a at @s run playsound minecraft:block.note_block.plat master @s ~ ~ ~ 1 1.2"
+        wait 1 second
+        execute console command "bossbar set craft_timer value 1"
+        execute console command "bossbar set craft_timer color white"
+        execute console command "bossbar set craft_timer style progress"
+        execute console command "bossbar set craft_timer name {text:""%{_crown_team_name}%"",color:""%{_crown_name_color}%"",bold:true,extra:[{text:"" — MATRIX ERUPTION IN: 1s"",color:""white"",bold:true}]}"
+        execute console command "execute as @a at @s run playsound minecraft:block.note_block.plat master @s ~ ~ ~ 1 1.6"
+        wait 1 second
+        execute console command "bossbar set craft_timer value 0"
+        execute console command "bossbar set craft_timer color red"
+        execute console command "bossbar set craft_timer name {text:""%{_crown_team_name}%"",color:""%{_crown_name_color}%"",bold:true,extra:[{text:"" — THE MATRIX HAS SPLIT! GRAB THE CROWN!"",color:""dark_red"",bold:true}]}"
+        execute console command "execute as @a at @s run playsound minecraft:block.note_block.plat master @s ~ ~ ~ 1 2.0"
+        wait 0.5 seconds
+        execute console command "bossbar remove craft_timer"
+        execute console command "weather clear"
+        set {_crown} to netherite_helmet named "&6&lThe Sovereign Crown" with lore "&7Forged at The Center of The World." and "&e&lLORE: &7An ancient relic born from ancient bloodlines" and "&7to erase the opposing kingdom from existence."
+        enchant {_crown} with protection 10
+        enchant {_crown} with fire protection 10
+        enchant {_crown} with blast protection 10
+        enchant {_crown} with projectile protection 10
+        enchant {_crown} with unbreaking 10
+        drop {_crown} at {_loc}
+        execute console command "execute as @a at @s run playsound minecraft:entity.ender_dragon.growl master @s ~ ~ ~ 1 1"
+        broadcast "&e&l[WAR] &6&lThe Sovereign Crown &ehas dropped onto the altar at The Center of The World (0,0)!"
+
+every 1 second:
+    loop all players:
+        if name of loop-player's helmet is "&6&lThe Sovereign Crown":
+            execute console command "effect give %name of loop-player% minecraft:strength 3 4 true"
+            execute console command "effect give %name of loop-player% minecraft:speed 3 4 true"
+            execute console command "effect give %name of loop-player% minecraft:resistance 3 1 true"
+            execute console command "effect give %name of loop-player% minecraft:absorption 3 4 true"
+
+command /testritual:
+    permission: op
+    permission message: &cOnly server Operators can test the ritual!
+    trigger:
+        set {_team} to {team::%player's uuid%}
+        if {_team} is not set:
+            send "&cYou must join BCC or Bagmati before testing the ritual. Use /joinbcc or /joinbagmati." to player
+            stop
+        send "&a&l[!] &aForce-starting the Crown War ritual for team %{_team}%..." to player
+        make console execute command "skript-core-ritual %player% %{_team}%"
